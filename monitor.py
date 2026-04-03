@@ -1,10 +1,8 @@
-import psutil
+from __future__ import annotations
 
-def get_metrics():
-    cpu = psutil.cpu_percent(interval=1)
-    memory = psutil.virtual_memory().percent
+from app.api.schemas import Monitor
+from app.scheduler.scheduler import run_monitor
 
-    return {
-        "cpu_usage": cpu,
-        "memory_usage": memory
-    }
+
+def run_once(monitor: Monitor) -> None:
+    run_monitor(monitor, reason="manual")

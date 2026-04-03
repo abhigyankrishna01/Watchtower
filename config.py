@@ -1,2 +1,5 @@
-CPU_THRESHOLD = 80
-MEMORY_THRESHOLD = 80
+from __future__ import annotations
+
+from app.core.config import settings
+
+__all__ = ["settings"]

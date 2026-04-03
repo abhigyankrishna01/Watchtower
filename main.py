@@ -1,18 +1,9 @@
-from monitor import get_metrics
-from alerts import check_alerts
-from logger import log_event
+from __future__ import annotations
 
-def main():
-    metrics = get_metrics()
-    alerts = check_alerts(metrics)
+import uvicorn
 
-    print("System Metrics:", metrics)
-    log_event(f"Metrics collected: {metrics}")
+from app.main import app
 
-    if alerts:
-        for alert in alerts:
-            print(alert)
-            log_event(alert)
 
 if __name__ == "__main__":
-    main()
+    uvicorn.run(app, host="0.0.0.0", port=8000)
