@@ -22,5 +22,6 @@ jobs:
           CELERY_ALWAYS_EAGER: "true"
           DATABASE_URL: "sqlite+pysqlite:///./test.db"
           AUTO_CREATE_DB: "true"
+          PYTHONPATH: "."
         run: |
           pytest -q
