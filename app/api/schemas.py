@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -21,7 +21,7 @@ class MonitorCreate(BaseModel):
 
 class Monitor(MonitorCreate):
     id: UUID = Field(default_factory=uuid4)
-    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 
 class CheckResult(BaseModel):
@@ -31,7 +31,7 @@ class CheckResult(BaseModel):
     latency_ms: float
     status_code: int | None = None
     error_message: str | None = None
-    validated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    validated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     response_sample: dict[str, Any] | None = None
 
 

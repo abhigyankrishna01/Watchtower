@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 
 from sqlalchemy import JSON, DateTime, Float, Integer, String
@@ -22,7 +22,7 @@ class MonitorModel(Base):
     timeout_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     latency_ms_threshold: Mapped[int | None] = mapped_column(Integer, nullable=True)
     schedule_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
@@ -37,4 +37,4 @@ class CheckResultModel(Base):
     status_code: Mapped[int | None] = mapped_column(Integer, nullable=True)
     error_message: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     response_sample: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    validated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    validated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

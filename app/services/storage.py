@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from sqlalchemy import select
@@ -79,7 +79,7 @@ class DatabaseStore:
             return [_to_result(item) for item in items]
 
     def list_scheduled_due(self, now: datetime | None = None) -> list[Monitor]:
-        now = now or datetime.now(UTC)
+        now = now or datetime.now(timezone.utc)
         with SessionLocal() as session:
             items = session.scalars(select(MonitorModel).where(MonitorModel.schedule_seconds.is_not(None))).all()
             due = []
@@ -94,7 +94,7 @@ class DatabaseStore:
             return [_to_monitor(item) for item in due]
 
     def mark_monitor_run(self, monitor_id: UUID, run_at: datetime | None = None) -> None:
-        run_at = run_at or datetime.now(UTC)
+        run_at = run_at or datetime.now(timezone.utc)
         with SessionLocal() as session:
             model = session.get(MonitorModel, str(monitor_id))
             if model:
