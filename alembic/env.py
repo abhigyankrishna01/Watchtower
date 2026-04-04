@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import os
+import sys
 from logging.config import fileConfig
+
+# Add the project root directory to the Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from alembic import context
 from sqlalchemy import engine_from_config, pool
