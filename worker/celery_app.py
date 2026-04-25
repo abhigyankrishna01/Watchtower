@@ -21,6 +21,7 @@ celery_app = Celery(
 )
 
 celery_app.conf.update(
+    task_default_queue="default",
     task_routes={
         "watchtower.execute_check": {"queue": "default"},
         "watchtower.dispatch_scheduled": {"queue": "default"}

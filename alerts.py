@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import httpx
+from celery import shared_task
 
 
-def send_webhook_alert(webhook_url: str, monitor_id, run_id, error_message: str | None) -> None:
-    payload = {
-        "monitor_id": str(monitor_id),
-        "run_id": str(run_id),
-        "error": error_message,
-    }
-    try:
-        httpx.post(webhook_url, json=payload, timeout=5)
-    except Exception:  # noqa: BLE001
-        return
+@shared_task(
+    name="watchtower.dispatch_webhook",
+    autoretry_for=(httpx.RequestError, httpx.HTTPStatusError),
+    retry_backoff=True,       # 1s, 2s, 4s, 8s, 16s …
+    retry_backoff_max=300,    # cap at 5 minutes
+    max_retries=5,
+    acks_late=True,
+)
+def dispatch_webhook(webhook_url: str, payload: dict) -> None:
+    response = httpx.post(webhook_url, json=payload, timeout=10)
+    response.raise_for_status()

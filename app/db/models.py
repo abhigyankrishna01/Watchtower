@@ -22,6 +22,10 @@ class MonitorModel(Base):
     timeout_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
     latency_ms_threshold: Mapped[int | None] = mapped_column(Integer, nullable=True)
     schedule_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    current_state: Mapped[str] = mapped_column(String(16), nullable=False, default="UP")
+    consecutive_failures: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    webhook_url: Mapped[str | None] = mapped_column(String(2048), nullable=True)
+    user_id: Mapped[str] = mapped_column(String(255), nullable=False, default="dev_user", index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

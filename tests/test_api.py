@@ -5,7 +5,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 os.environ["CELERY_ALWAYS_EAGER"] = "true"
-os.environ["DATABASE_URL"] = "sqlite+pysqlite:///./test.db"
+os.environ["DATABASE_URL"] = "sqlite+pysqlite:///:memory:"
 os.environ["AUTO_CREATE_DB"] = "true"
 
 from app.api.schemas import CheckResult

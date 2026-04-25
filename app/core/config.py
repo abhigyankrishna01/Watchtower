@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     jwt_issuer: str | None = Field(default=None, alias="JWT_ISSUER")
     jwt_audience: str | None = Field(default=None, alias="JWT_AUDIENCE")
     jwt_algorithm: str = Field(default="HS256", alias="JWT_ALGORITHM")
+    nextauth_secret: str | None = Field(default=None, alias="NEXTAUTH_SECRET")
 
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
     celery_broker_url: str = Field(default="redis://localhost:6379/1", alias="CELERY_BROKER_URL")
@@ -24,6 +25,16 @@ class Settings(BaseSettings):
 
     default_request_timeout: float = Field(default=10.0, alias="DEFAULT_REQUEST_TIMEOUT")
     default_latency_ms_threshold: int = Field(default=1500, alias="DEFAULT_LATENCY_MS_THRESHOLD")
+    flap_threshold: int = Field(default=3, alias="FLAP_THRESHOLD")
+
+    cors_origins: str = Field(
+        default="http://localhost:3001,http://localhost:3000",
+        alias="CORS_ORIGINS",
+    )
+    rate_limit_redis_url: str = Field(
+        default="redis://localhost:6379/3",
+        alias="RATE_LIMIT_REDIS_URL",
+    )
 
     prometheus_metrics_path: str = Field(default="/metrics", alias="PROMETHEUS_METRICS_PATH")
     sentry_dsn: str | None = Field(default=None, alias="SENTRY_DSN")

@@ -1,28 +1,148 @@
 {
-  "annotations": {"list": []},
+  "uid": "watchtower-overview",
+  "title": "Watchtower Overview",
+  "tags": ["watchtower"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 2,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "annotations": { "list": [] },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": {},
+        "hide": 0,
+        "includeAll": false,
+        "refresh": 1
+      }
+    ]
+  },
   "panels": [
     {
+      "id": 1,
       "type": "timeseries",
-      "title": "Check Latency (p95)",
+      "title": "Check Latency P95 (per monitor)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "lineWidth": 2 } }
+      },
+      "options": { "tooltip": { "mode": "multi" } },
       "targets": [
         {
-          "expr": "histogram_quantile(0.95, sum(rate(watchtower_check_latency_seconds_bucket[5m])) by (le))",
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "histogram_quantile(0.95, sum(rate(watchtower_check_latency_seconds_bucket[5m])) by (le, monitor_id))",
+          "legendFormat": "{{monitor_id}}",
           "refId": "A"
         }
       ]
     },
     {
+      "id": 2,
       "type": "timeseries",
-      "title": "Check Failures",
+      "title": "Success Rate (per monitor)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.9 },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      },
       "targets": [
         {
-          "expr": "sum(rate(watchtower_check_requests_total{status=\"fail\"}[5m]))",
-          "refId": "B"
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(rate(watchtower_check_requests_total{status=\"pass\"}[5m])) by (monitor_id) / sum(rate(watchtower_check_requests_total[5m])) by (monitor_id)",
+          "legendFormat": "{{monitor_id}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Validation Failures / min (by rule)",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "fieldConfig": { "defaults": { "unit": "short" } },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(rate(watchtower_validation_failures_total[5m])) by (monitor_id, rule) * 60",
+          "legendFormat": "{{monitor_id}} / {{rule}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Total Checks",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(watchtower_check_requests_total) or vector(0)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Total Failures",
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "red", "value": 1 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "sum(watchtower_check_requests_total{status=\"fail\"}) or vector(0)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Active Monitors",
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 12 },
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "options": { "reduceOptions": { "calcs": ["lastNotNull"] }, "colorMode": "value" },
+      "targets": [
+        {
+          "datasource": { "type": "prometheus", "uid": "${datasource}" },
+          "expr": "count(count by (monitor_id)(watchtower_check_requests_total)) or vector(0)",
+          "refId": "A"
         }
       ]
     }
-  ],
-  "schemaVersion": 39,
-  "title": "Watchtower Overview",
-  "version": 1
+  ]
 }

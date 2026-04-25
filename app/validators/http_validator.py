@@ -5,7 +5,6 @@ from typing import Any
 
 from jsonschema import ValidationError, validate
 
-from app.metrics import VALIDATION_FAILURES
 from app.validators.base import ValidationResult, Validator
 
 
@@ -24,8 +23,6 @@ class StatusCodeValidator(Validator):
 
     def validate(self, response: HTTPResponseData) -> ValidationResult:
         passed = response.status_code == self.expected_status
-        if not passed:
-            VALIDATION_FAILURES.labels(monitor_id="unknown", rule=self.name).inc()
         return ValidationResult(
             passed=passed,
             rule=self.name,
@@ -41,12 +38,10 @@ class JSONSchemaValidator(Validator):
 
     def validate(self, response: HTTPResponseData) -> ValidationResult:
         if response.json_body is None:
-            VALIDATION_FAILURES.labels(monitor_id="unknown", rule=self.name).inc()
             return ValidationResult(False, self.name, message="Response body is not JSON")
         try:
             validate(instance=response.json_body, schema=self.schema)
         except ValidationError as exc:
-            VALIDATION_FAILURES.labels(monitor_id="unknown", rule=self.name).inc()
             return ValidationResult(False, self.name, message=str(exc))
         return ValidationResult(True, self.name)
 
@@ -59,8 +54,6 @@ class LatencyValidator(Validator):
 
     def validate(self, response: HTTPResponseData) -> ValidationResult:
         passed = response.latency_ms <= self.max_latency_ms
-        if not passed:
-            VALIDATION_FAILURES.labels(monitor_id="unknown", rule=self.name).inc()
         return ValidationResult(
             passed=passed,
             rule=self.name,

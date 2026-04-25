@@ -1,12 +1,22 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Optional
 
 import jwt
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, Request, status
 
 from app.core.config import settings
 
+
+@dataclass
+class CurrentUser:
+    id: str
+    email: str = ""
+    name: str = ""
+
+
+# ── Legacy gate (non-monitor routes) ─────────────────────────────────────────
 
 def _validate_jwt(token: str) -> None:
     try:
@@ -17,7 +27,7 @@ def _validate_jwt(token: str) -> None:
             audience=settings.jwt_audience or None,
             issuer=settings.jwt_issuer or None,
         )
-    except jwt.PyJWTError as exc:  # noqa: BLE001
+    except jwt.PyJWTError as exc:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid JWT") from exc
 
 
@@ -41,3 +51,52 @@ def require_auth(
             return
 
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+
+# ── Per-user dependency (monitor routes) ─────────────────────────────────────
+
+def get_current_user(
+    request: Request,
+    authorization: Optional[str] = Header(default=None, alias="Authorization"),
+) -> CurrentUser:
+    """
+    Decode the NextAuth-issued HS256 JWT and return the authenticated user.
+    Also stamps request.state.user_id so the slowapi key function can read
+    it without re-decoding the JWT.
+
+    When NEXTAUTH_SECRET is not configured (local dev / CI) the dependency
+    is a no-op and returns a synthetic dev user keyed on client IP.
+    """
+    if not settings.nextauth_secret:
+        ip = request.client.host if request.client else "dev"
+        request.state.user_id = ip
+        return CurrentUser(id=ip)
+
+    if not authorization:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+    try:
+        payload = jwt.decode(token, settings.nextauth_secret, algorithms=["HS256"])
+    except jwt.PyJWTError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token"
+        ) from exc
+
+    user_id = payload.get("sub", "")
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing sub claim"
+        )
+
+    user = CurrentUser(
+        id=user_id,
+        email=payload.get("email", ""),
+        name=payload.get("name", ""),
+    )
+    # Load-bearing: slowapi key function reads this in Phase 3.5
+    request.state.user_id = user.id
+    return user
