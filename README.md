@@ -1,5 +1,7 @@
 # Watchtower
 
+[![CI](https://github.com/abhigyankrishna01/Watchtower/actions/workflows/ci.yml/badge.svg)](https://github.com/abhigyankrishna01/Watchtower/actions/workflows/ci.yml)
+
 Watchtower is a production-focused API monitoring and reliability platform.
 
 It continuously checks APIs in production, validates response correctness (status + schema), tracks latency, stores run results, and sends alerts when anomalies are detected.
@@ -187,9 +189,35 @@ If JWT is configured, send `Authorization: Bearer <token>`.
 pytest -q
 ```
 
-Current tests cover:
+Current tests (45) cover:
 - API monitor creation + immediate run
 - validator behavior (status, schema, latency)
+- SSRF protection: 40+ bypass and regression cases (`tests/test_ssrf.py`); DNS is mocked so CI runs offline
+
+---
+
+## Security: SSRF protection
+
+Watchtower makes HTTP requests to user-supplied URLs (monitors **and** webhooks), which makes it a natural
+SSRF target: an attacker could point a monitor at `169.254.169.254` (cloud credentials) or at internal
+services like Redis. Protection runs in two layers (`app/validators/ssrf.py`):
+
+1. **API, at creation time (no DNS)**: rejects non-HTTP(S) schemes, internal hostnames (`localhost`,
+   `*.internal`, `*.local`, compose service names) and non-public IPs in **every notation**, including decimal
+   `2130706433`, hex `0x7f000001`, short `127.1`, octal, IPv4-mapped IPv6, and CGNAT `100.64.0.0/10`.
+2. **Worker, at request time**: `safe_request` resolves DNS, rejects the URL if **any** resolved address is
+   non-public (so `127.0.0.1.nip.io` cannot get through), then **connects to the validated IP** while keeping the
+   original `Host` header and TLS SNI. A DNS-rebinding server cannot swap in `127.0.0.1` between check and
+   connect, and certificates are still verified against the real hostname. Redirects are never followed, and
+   proxy env vars are ignored.
+
+| Bypass | Before | After |
+|---|---|---|
+| `http://127.0.0.1.nip.io/` (public name → private IP) | ❌ allowed | ✅ blocked |
+| `http://2130706433/`, `http://0x7f000001/` | ❌ allowed | ✅ blocked |
+| DNS rebinding (public on check, private on connect) | ❌ possible | ✅ pinned |
+| Webhook to internal host | ❌ allowed | ✅ blocked |
+| 302 redirect to metadata IP | ✅ not followed | ✅ not followed (now explicit) |
 
 ---
 
