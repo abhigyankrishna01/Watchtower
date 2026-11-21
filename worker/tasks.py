@@ -6,14 +6,13 @@ from datetime import UTC, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
-import httpx
 from celery import shared_task
 
 from app.api.schemas import CheckResult, Monitor
 from app.core.config import settings
 from app.metrics import CHECK_LATENCY, CHECK_REQUESTS, VALIDATION_FAILURES
 from app.validators.http_validator import HTTPResponseData, JSONSchemaValidator, LatencyValidator, StatusCodeValidator
-from app.validators.ssrf import is_ssrf_url
+from app.validators.ssrf import SSRFError, is_ssrf_url, safe_request
 from app.services.storage import STORE
 from alerts import dispatch_webhook
 
@@ -53,17 +52,22 @@ def execute_check(payload: dict[str, Any]) -> CheckResult:
     json_body: dict[str, Any] | None = None
 
     try:
-        with httpx.Client(timeout=timeout) as client:
-            response = client.request(
-                monitor.method,
-                str(monitor.url),
-                headers=monitor.headers,
-            )
+        # Resolves DNS, rejects private targets, and pins the connection to the
+        # validated IP (defeats DNS rebinding). Redirects are not followed.
+        response = safe_request(
+            monitor.method,
+            str(monitor.url),
+            timeout=timeout,
+            headers=monitor.headers,
+        )
         status_code = response.status_code
         try:
             json_body = response.json()
         except ValueError:
             json_body = None
+    except SSRFError as exc:
+        logger.warning("SSRF blocked at request time: monitor %s url %s (%s)", monitor.id, monitor.url, exc)
+        error_message = "SSRF blocked: Invalid target"
     except Exception as exc:  # noqa: BLE001
         error_message = str(exc)
 
